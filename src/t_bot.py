@@ -30,14 +30,12 @@
 
 
 from cgi import print_form
-from cgitb import text
+from cgitb import html, text
 import time
 from tokenize import group
 from typing import Text
-# from notification import notification, notification_5
 from pickle import TRUE
 import telebot
-import schedule
 from telebot import types
 import datetime
 import sqlite3
@@ -181,9 +179,9 @@ def timetable(message):
     # Определение четности и нечетности недели
     def what_is_day():
         if int(datetime.datetime.now().strftime('%W')) % 2 == 0:
-            return 2
+            return 20
         else:
-            return 1
+            return 10
 
     # День недели
     def week_day(tt_info):
@@ -205,14 +203,18 @@ def timetable(message):
 
     # Вывод четной или нечетной недели для пользователя 
     def print_message_week(week):
-        if week == 2:
+        if week == 20:
             return 'ЗНАМЕНАТЕЛЬ'
         else:
             return 'ЧИСЛИТЕЛЬ'
 
+
     # Проверка на количество пройденных четных недель
     def check_honest():
+        count = 0
+        datetime.timedelta()
         return datetime.datetime.now().isoweekday()
+
 
     # Делаем проверку на выбор группы
     if what_is_group(chat_id) == "NONE":
@@ -221,17 +223,28 @@ def timetable(message):
         # Подключаемся к бд с расписанием
         conn = sqlite3.connect(r'database/timetable.db')
         db = conn.cursor()
-
-        db.execute(f"SELECT * from '{what_is_group(chat_id)}' where week_day = {datetime.datetime.today().isoweekday()};")
+        
+        db.execute(f"SELECT * from '{what_is_group(chat_id)}' where week_day = {datetime.datetime.today().isoweekday()} and parity = {what_is_day()};")
         tt_info = db.fetchall()
-        
-        for i in tt_info:
-            db.execute(f"SELECT name FROM parity_settings where id = {i[3]}")
-            parity = db.fetchone()[0]
-            print(week_day((datetime.datetime.today().isoweekday())))
-        
-        print(check_honest())
-       
+        if tt_info == []:
+            db.execute(f"SELECT * from '{what_is_group(chat_id)}' where week_day = {datetime.datetime.today().isoweekday()} and parity = {int(what_is_day()/10)};")
+            tt_info = db.fetchall()
+        if tt_info == []:
+            bot.send_message(message.chat.id, f"<b>{print_message_week(what_is_day())}</b>\n<b>{week_day(datetime.datetime.today().isoweekday())}</b>", parse_mode='html')
+            bot.send_message(message.chat.id, f"<b>У вас сегодня выходной!</b>\nВы можете отдохнуть с друзьями, подготовиться вместе к контрольной.", parse_mode='html')
+        else:
+            bot.send_message(message.chat.id, f"<b>{print_message_week(what_is_day())}</b>\n<b>{week_day(tt_info[0][0])}</b>", parse_mode='html')
+            for j,i in enumerate(tt_info):
+                db.execute(f"SELECT name FROM parity_settings where id = {i[3]}")
+                parity = db.fetchone()[0]
+                db.execute(f"SELECT name, type, teacher_id from lessons where id = {i[1]};")
+                info_lesson = db.fetchone()
+                lesson_name = info_lesson[0]
+                lesson_type = info_lesson[1]
+                teacher_id = info_lesson[2]
+                bot.send_message(message.chat.id, f"{j+1}. {lesson_name}\n\t\t\t\t{lesson_type}\n\t\t\t\t{i[2]}\n\t\t\t\t{i[4]}")
+                # print(week_day(i[0]), parity, lesson_name, lesson_type, teacher_id)
+
 
 
 
