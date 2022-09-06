@@ -47,7 +47,7 @@ from datetime import timedelta
 
 
 ### ВВОДИМ ТОКЕН НАШЕГО БОТА
-bot = telebot.TeleBot("<TOKEN>")
+bot = telebot.TeleBot("5620314916:AAFd2NaaCj02H8Nwek38Rb_ugKZdpqlERe4")
 
 
 ## НАПОМИНАЛКИ (Не работает, пока что)
@@ -159,6 +159,8 @@ def help(message):
     bot.send_message(message.chat.id, gen_Help, parse_mode='html')
 
 
+
+
 ## ВЫВОД РАСПИСАНИЯ ПРИ ЗАПРОСЕ
 @bot.message_handler(commands=['timetable'])
 def timetable(message):
@@ -179,24 +181,38 @@ def timetable(message):
     # Определение четности и нечетности недели
     def what_is_day():
         if int(datetime.datetime.now().strftime('%W')) % 2 == 0:
-            return 1
-        else:
             return 2
-
-    # Вывод четной или нечетной недели для базы данных 
-    def print_db_week(week):
-        if week == 1:
-            return 'honest'
         else:
-            return 'odd'
+            return 1
+
+    # День недели
+    def week_day(tt_info):
+        if tt_info == 1:
+            week_day = 'ПОНЕДЕЛЬНИК'
+        elif tt_info == 2:
+            week_day = 'ВТОРНИК'
+        elif tt_info == 3:
+            week_day = 'СРЕДА'
+        elif tt_info == 4:
+            week_day = 'ЧЕТВЕРГ'
+        elif tt_info == 5:
+            week_day = 'ПЯТНИЦА'
+        elif tt_info == 6:
+            week_day = 'СУББОТА'
+        elif tt_info == 7:
+            week_day = 'ВОСКРЕСЕНЬЕ'
+        return week_day
 
     # Вывод четной или нечетной недели для пользователя 
     def print_message_week(week):
-        if week == 1:
+        if week == 2:
             return 'ЗНАМЕНАТЕЛЬ'
         else:
             return 'ЧИСЛИТЕЛЬ'
 
+    # Проверка на количество пройденных четных недель
+    def check_honest():
+        return datetime.datetime.now().isoweekday()
 
     # Делаем проверку на выбор группы
     if what_is_group(chat_id) == "NONE":
@@ -206,42 +222,30 @@ def timetable(message):
         conn = sqlite3.connect(r'database/timetable.db')
         db = conn.cursor()
 
-        db.execute(f"SELECT week_day, {print_db_week(what_is_day())}_week, classroom_{print_db_week(what_is_day())}, start_time from '{what_is_group(chat_id)}' where week_day = {datetime.datetime.today().isoweekday()};")
-        all = db.fetchall()
-        conn.close()
-
-        first_lesson = all[0]
-        second_lesson = all[1]
-
-        # День недели
-        if first_lesson[0] == 1:
-            week_day = 'ПОНЕДЕЛЬНИК'
-        elif first_lesson[0] == 2:
-            week_day = 'ВТОРНИК'
-        elif first_lesson[0] == 3:
-            week_day = 'СРЕДА'
-        elif first_lesson[0] == 4:
-            week_day = 'ЧЕТВЕРГ'
-        elif first_lesson[0] == 5:
-            week_day = 'ПЯТНИЦА'
-        elif first_lesson[0] == 6:
-            week_day = 'СУББОТА'
-        elif first_lesson[0] == 7:
-            week_day = 'ВОСКРЕСЕНЬЕ'
+        db.execute(f"SELECT * from '{what_is_group(chat_id)}' where week_day = {datetime.datetime.today().isoweekday()};")
+        tt_info = db.fetchall()
+        
+        for i in tt_info:
+            db.execute(f"SELECT name FROM parity_settings where id = {i[3]}")
+            parity = db.fetchone()[0]
+            print(week_day((datetime.datetime.today().isoweekday())))
+        
+        print(check_honest())
+       
 
 
 
-        markup = types.InlineKeyboardMarkup()
-        btn1 = types.InlineKeyboardButton(f'1️⃣', callback_data=f'{first_lesson[1]}')
-        btn2 = types.InlineKeyboardButton(f'2️⃣', callback_data=f'{second_lesson[1]}')
-        markup.add(btn1)
-        markup.add(btn2)
+        # markup = types.InlineKeyboardMarkup()
+        # btn1 = types.InlineKeyboardButton(f'1️⃣', callback_data=f'{first_lesson[1]}')
+        # btn2 = types.InlineKeyboardButton(f'2️⃣', callback_data=f'{second_lesson[1]}')
+        # markup.add(btn1)
+        # markup.add(btn2)
 
 
-        notification_of_lesson = f'{print_message_week(what_is_day())}\n{week_day}\n\n1. {first_lesson[1]}\n    {first_lesson[3]}\n    {first_lesson[2]}\n\n2. {second_lesson[1]}\n    {second_lesson[3]}\n    {second_lesson[2]}'
-        bot.send_message(message.chat.id, str(notification_of_lesson))
-        print(first_lesson[1], second_lesson[1])
-        bot.send_message(message.chat.id, "Я могу показать вам преподавателей по этим парам👇", reply_markup=markup)
+        # notification_of_lesson = f'{print_message_week(what_is_day())}\n{week_day}\n\n1. {first_lesson[1]}\n    {first_lesson[3]}\n    {first_lesson[2]}\n\n2. {second_lesson[1]}\n    {second_lesson[3]}\n    {second_lesson[2]}'
+        # bot.send_message(message.chat.id, str(all))
+        # print(first_lesson[1], second_lesson[1])
+        # bot.send_message(message.chat.id, "Я могу показать вам преподавателей по этим парам👇", reply_markup=markup)
 
 
 
