@@ -4,6 +4,7 @@
 from ast import arg
 from re import S
 import sys, warnings, string
+from tokenize import group
 from dataclasses import replace
 from bs4 import BeautifulSoup 
 import sqlite3
@@ -25,6 +26,28 @@ def main(argv=sys.argv):
                 pip = False            
         return line
 
+    conn = sqlite3.connect(r"chats.db")
+    db = conn.cursor()
+    db.execute("SELECT * FROM groups;")
+    groups = db.fetchall()
+
+    flag = False
+    for i in groups:
+        print(i[0])
+        if i[0] == argv[1]:
+            flag = True
+            break
+    
+    if flag == False:
+        print("NONE")
+        db.execute(f"INSERT INTO groups (name) VALUES ('{argv[1]}');")
+        conn.commit()
+        print(f"INSERT INTO groups (name) VALUES ('{argv[1]}');")
+    else:
+        print("ALREADY INSERTED")
+    conn.close()
+
+    
     teacher = []
     classroom = []
     parity = []

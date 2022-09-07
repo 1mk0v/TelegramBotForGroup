@@ -56,29 +56,7 @@ bot = telebot.TeleBot("5620314916:AAFd2NaaCj02H8Nwek38Rb_ugKZdpqlERe4")
 
 
 # Создаем функции для отправки оповещений всем пользователям, что запустили бота
-conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
-db = conn.cursor()
-db.execute("SELECT id from chats;")
-id = db.fetchall()
-conn.close()
-
-# def send_notification():
-#     for count in id:
-#         bot.send_message(int(count[0]), notification())
-
-# def notification_at_12():
-#     for count in id:
-#         bot.send_message(int(count[0]), notification())
-
-
-# # Инициализация напоминалок
-# schedule.every(1).seconds.do(send_notification)
-# schedule.every().day.at('12:00').do(notification_at_12)
-
-# Запускаем уведомления (Пока что не работает)
-# schedule.run_pending()
-
-
+# ...
 
 
 ## ПРИВЕТСТВИЕ ПРИ ПОДКЛЮЧЕНИИ
@@ -115,16 +93,22 @@ def start(message):
         if flag == True:
             db.execute(f"INSERT INTO chats ('id') VALUES ('{chat_id}');")
             conn.commit()
-            conn.close()
             print(f"INSERT INTO chats ('id') VALUES ('{chat_id}');")
-            markup1 = types.InlineKeyboardMarkup()
-            vbITS_2 = types.InlineKeyboardButton("2вбИТС", callback_data='2vbITS')
-            vbASU_2 = types.InlineKeyboardButton("2вбАСУ", callback_data='2vbASU')
+            db.execute("SELECT name from groups;")
+            chats = db.fetchall()
+            conn.close()
 
-            markup1.add(vbITS_2, vbASU_2)
 
             say_hello = "Я вижу ты у нас впервые)\nДавай знакомиться. Я - Анна. Меня создали в помощь студентам. Из какой ты группы?"
-            bot.send_message(message.chat.id, say_hello, reply_markup=markup1)       
+            bot.send_message(message.chat.id, say_hello)
+            
+            
+            for i in chats:
+                markup1 = types.InlineKeyboardMarkup()
+                markup1.add(types.InlineKeyboardButton(f"{i[0]}", callback_data=f'{i[0]}'))
+                bot.send_message(message.chat.id, f"<b>{i[0]}</b>", reply_markup=markup1, parse_mode='html')
+
+                
             flag = False
 
     time.sleep(4)
@@ -210,10 +194,10 @@ def timetable(message):
 
 
     # Проверка на количество пройденных четных недель
-    def check_honest():
-        count = 0
-        datetime.timedelta()
-        return datetime.datetime.now().isoweekday()
+    # def check_honest():
+    #     count = 0
+    #     datetime.timedelta()
+    #     return datetime.datetime.now().isoweekday()
 
 
     # Делаем проверку на выбор группы
@@ -223,7 +207,7 @@ def timetable(message):
         # Подключаемся к бд с расписанием
         conn = sqlite3.connect(r'database/timetable.db')
         db = conn.cursor()
-        
+        teacher_id= []
         db.execute(f"SELECT * from '{what_is_group(chat_id)}' where week_day = {datetime.datetime.today().isoweekday()} and parity = {what_is_day()};")
         tt_info = db.fetchall()
         if tt_info == []:
@@ -232,33 +216,26 @@ def timetable(message):
         if tt_info == []:
             bot.send_message(message.chat.id, f"<b>{print_message_week(what_is_day())}</b>\n<b>{week_day(datetime.datetime.today().isoweekday())}</b>", parse_mode='html')
             bot.send_message(message.chat.id, f"<b>У вас сегодня выходной!</b>\nВы можете отдохнуть с друзьями, подготовиться вместе к контрольной.", parse_mode='html')
-        else:
-            bot.send_message(message.chat.id, f"<b>{print_message_week(what_is_day())}</b>\n<b>{week_day(tt_info[0][0])}</b>", parse_mode='html')
-            for j,i in enumerate(tt_info):
-                db.execute(f"SELECT name FROM parity_settings where id = {i[3]}")
-                parity = db.fetchone()[0]
-                db.execute(f"SELECT name, type, teacher_id from lessons where id = {i[1]};")
-                info_lesson = db.fetchone()
-                lesson_name = info_lesson[0]
-                lesson_type = info_lesson[1]
-                teacher_id = info_lesson[2]
-                bot.send_message(message.chat.id, f"{j+1}. {lesson_name}\n\t\t\t\t{lesson_type}\n\t\t\t\t{i[2]}\n\t\t\t\t{i[4]}")
-                # print(week_day(i[0]), parity, lesson_name, lesson_type, teacher_id)
-
-
-
-
-        # markup = types.InlineKeyboardMarkup()
-        # btn1 = types.InlineKeyboardButton(f'1️⃣', callback_data=f'{first_lesson[1]}')
-        # btn2 = types.InlineKeyboardButton(f'2️⃣', callback_data=f'{second_lesson[1]}')
-        # markup.add(btn1)
-        # markup.add(btn2)
-
-
-        # notification_of_lesson = f'{print_message_week(what_is_day())}\n{week_day}\n\n1. {first_lesson[1]}\n    {first_lesson[3]}\n    {first_lesson[2]}\n\n2. {second_lesson[1]}\n    {second_lesson[3]}\n    {second_lesson[2]}'
-        # bot.send_message(message.chat.id, str(all))
-        # print(first_lesson[1], second_lesson[1])
-        # bot.send_message(message.chat.id, "Я могу показать вам преподавателей по этим парам👇", reply_markup=markup)
+            exit()
+        elif len(tt_info) == 1:
+            db.execute(f"SELECT * from '{what_is_group(chat_id)}' where week_day = {datetime.datetime.today().isoweekday()} and parity in ({int(what_is_day()/10)}, 0);")
+            tt_info = db.fetchall()
+        elif len(tt_info) > 2:
+             bot.send_message(message.chat.id, f"Я не научилась точно выводить ваше расписание, но вот что пишут в расписании", parse_mode='html')
+                 
+        bot.send_message(message.chat.id, f"<b>{print_message_week(what_is_day())}</b>\n<b>{week_day(tt_info[0][0])}</b>", parse_mode='html')
+        for j,i in enumerate(tt_info):
+            # db.execute(f"SELECT name FROM parity_settings where id = {i[3]}")
+            # parity = db.fetchone()[0]
+            db.execute(f"SELECT name, type, teacher_id from lessons where id = {i[1]};")
+            info_lesson = db.fetchone()
+            lesson_name = info_lesson[0]
+            lesson_type = info_lesson[1]
+            teacher_id = info_lesson[2]
+            markup = types.InlineKeyboardMarkup()
+            btn1 = types.InlineKeyboardButton(f'Показать преподавателя', callback_data=f'{teacher_id}')
+            markup.add(btn1)
+            bot.send_message(message.chat.id, f"{j+1}. {lesson_name}\n\t\t\t\t{lesson_type}\n\t\t\t\t{i[2]}\n\t\t\t\t{i[4]}", reply_markup=markup)
 
 
 
@@ -319,37 +296,36 @@ def get_info(message):
 @bot.callback_query_handler(func=lambda call:True)
 def callback_inline(call):
 
+    def select_group():
+        conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
+        db = conn.cursor()
+        db.execute("SELECT * from groups;")
+        chats = db.fetchall()[0]
+        conn.close()
+        return chats
+    
     #ИНФОРМАЦИЯ о группе
     def group(call):
         chat_id = call.message.chat.id
         conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
         db = conn.cursor()
-        db.execute(f"SELECT * from chats where id = '{chat_id}';")
-        group = db.fetchone()[1]
+        db.execute(f"SELECT group_name from chats where id = '{chat_id}';")
+        group = db.fetchone()[0]
         conn.close()
         return group
 
 
     # ИНФОРМАЦИЯ о преподавателя
-    def teacher(name, group):
+    def teacher(id, group):
         conn = sqlite3.connect(r'database/timetable.db', check_same_thread=True)
         db = conn.cursor()
-        db.execute(f"SELECT * FROM lesson where name = '{name}';")
-        lesson = db.fetchone()
-        print(lesson)
-        if lesson[2] == 'NONE':
+        db.execute(f"SELECT * FROM teacher where id = '{id}' and group_name = '{group}';")
+        lesson = db.fetchall()
+        if lesson == []:
             db.close()
-            return lesson[2]
+            return "NONE"
         else: 
-            db.execute(f"SELECT * FROM teacher where name = '{lesson[2]}' and group_name = '{group}';")
-            teacher = db.fetchone()
-            db.close()
-            return teacher
-
-
-
-    # БОТ добавляет препода
-    # def add_teacher()
+            return lesson
 
 
     # Добавляет нового пользователя
@@ -370,23 +346,21 @@ def callback_inline(call):
             elif call.data == '2vbITS':
                 chat_id = call.message.chat.id
                 insert_client(chat_id=chat_id, group='2vbITS')
-            
+            elif call.data == '3vbITS':
+                chat_id = call.message.chat.id
+                insert_client(chat_id=chat_id, group='3vbITS')
             else: 
-                lesson = call.data
-                print(group(call))
-                print(lesson)
-                print(teacher(lesson, group(call)))
-                if teacher(lesson, group(call)) == 'NONE':
+                teacher_id = call.data
+                if teacher(teacher_id, group(call)) == "NONE":
                     s_sms = 'Извините, я не знаю этого преподавателя 😢'
                     bot.send_message(call.message.chat.id, s_sms)
                 else:
-                    teacher_data = teacher(lesson, group(call))
-                    name = teacher_data[0]
-                    j_title = teacher_data[1]
-                    department = teacher_data[2]
-                    url = teacher_data[3]
+                    teacher_data = teacher(teacher_id, group(call))
+                    name = teacher_data[0][1]
+                    j_title = teacher_data[0][2]
+                    url = teacher_data[0][5]
 
-                    text = f'{name}\n{j_title}\n{department}\n'
+                    text = f'{name}\n{j_title}\n'
 
                     photo = open(url, 'rb')
                     bot.send_photo(call.message.chat.id, photo, caption=text)
