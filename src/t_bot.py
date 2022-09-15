@@ -39,6 +39,7 @@ import telebot
 from telebot import types
 import datetime
 import sqlite3
+from keyboa import Keyboa
 from datetime import timedelta
 # from lessons import lesson1_evening, lesson2_evening
 
@@ -102,13 +103,13 @@ def start(message):
             say_hello = "Я вижу ты у нас впервые)\nДавай знакомиться. Я - Анна. Меня создали в помощь студентам. Из какой ты группы?"
             bot.send_message(message.chat.id, say_hello)
             
-            
+            all_groups = []
             for i in chats:
-                markup1 = types.InlineKeyboardMarkup()
-                markup1.add(types.InlineKeyboardButton(f"{i[0]}", callback_data=f'{i[0]}'))
-                bot.send_message(message.chat.id, f"<b>{i[0]}</b>", reply_markup=markup1, parse_mode='html')
+                all_groups.append(i[0])
 
-                
+            kb_groups = Keyboa(items=all_groups)
+            bot.send_message(message.chat.id, text=f"Выбери свою группу:", reply_markup=kb_groups())
+
             flag = False
 
     time.sleep(4)
@@ -300,8 +301,11 @@ def callback_inline(call):
         conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
         db = conn.cursor()
         db.execute("SELECT * from groups;")
-        chats = db.fetchall()[0]
+        all_info = db.fetchall()
         conn.close()
+        chats = []
+        for i in all_info:
+            chats.append(i[0])
         return chats
     
     #ИНФОРМАЦИЯ о группе
@@ -340,15 +344,10 @@ def callback_inline(call):
 
     try:
         if call.message:
-            if call.data == '2vbASU':
+            print(select_group())
+            if call.data in select_group():
                 chat_id = call.message.chat.id
-                insert_client(chat_id=chat_id, group='2vbASU')
-            elif call.data == '2vbITS':
-                chat_id = call.message.chat.id
-                insert_client(chat_id=chat_id, group='2vbITS')
-            elif call.data == '3vbITS':
-                chat_id = call.message.chat.id
-                insert_client(chat_id=chat_id, group='3vbITS')
+                insert_client(chat_id=chat_id, group=f'{call.data}')
             else: 
                 teacher_id = call.data
                 if teacher(teacher_id, group(call)) == "NONE":
