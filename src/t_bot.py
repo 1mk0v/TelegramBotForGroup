@@ -42,6 +42,7 @@ import datetime
 import sqlite3
 from keyboa import Keyboa
 from datetime import timedelta
+import logging
 
 
 
@@ -324,6 +325,11 @@ def callback_inline(call):
     def insert_client(chat_id, group):
         conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
         db = conn.cursor() 
+        db.execute(f"UPDATE chats SET group_name = '{group}' where id = '{chat_id}';")
+        conn.commit()
+        conn.close()
+        print(f"UPDATE chats SET group_name = '{group}' where id = '{chat_id}';")
+
 
     try:
         if call.message:
