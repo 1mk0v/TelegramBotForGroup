@@ -50,6 +50,9 @@ import logging
 ### ВВОДИМ ТОКЕН НАШЕГО БОТА
 bot = telebot.TeleBot("5620314916:AAFd2NaaCj02H8Nwek38Rb_ugKZdpqlERe4")
 
+
+#---------------------------------------------КЛИЕНТСКАЯ ЧАСТЬ------------------------------------------------------#
+
 ## ПРИВЕТСТВИЕ ПРИ ПОДКЛЮЧЕНИИ
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -113,8 +116,9 @@ def start(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("/help")
     btn2 = types.KeyboardButton("/timetable")
+    btn3 = types.KeyboardButton("/promo_code")
     markup.add(btn1, btn2)
-
+    markup.add(btn3)
     # Отправляем сообщения приветствия
     bot.send_sticker(message.chat.id, sticker)
     bot.send_message(message.chat.id, gen_Hello, parse_mode='html', reply_markup=markup)  # (кому. что. параметры)    schedule.run_pending()
@@ -229,15 +233,54 @@ def timetable(message):
         conn.close()
 
 
+
+#---------------------------------------------АДМИНСКАЯ ЧАСТЬ------------------------------------------------------#
+
+
+@bot.message_handler(commands=['ястароста'])
+def insert_headman(message):
+    bot.send_message(message.chat.id, "Привет!")
+    conn = sqlite3.connect(r'database/chats.db')
+    db = conn.cursor()
+    db.execute(f"SELECT headman FROM chats where group_name in (SELECT group_name FROM chats where id = {message.chat.id});")
+    yn = db.fetchone()
+    conn.close()
+    if 1 in yn:
+        bot.send_message(message.chat.id, "У этой группы есть староста!")
+    else:
+        bot.send_message(message.chat.id, "Вводи свой пароль, староста!")
+        bot.register_next_step_handler(message, get_password)
+
+def get_password(message):
+    text = message.text
+    conn = sqlite3.connect(r'database/chats.db')
+    db = conn.cursor()
+    db.execute(f'SELECT passwd FROM groups where name in (SELECT group_name from chats where id = {message.chat.id});')
+    passwd = db.fetchone()[0]
+    if text == passwd:
+        db.execute(f"UPDATE chats set headman = 1 where id = {message.chat.id}")
+        conn.commit()
+        conn.close()
+        bot.send_message(message.chat.id, "И правда староста, добро пожаловать, коллега!\nПерезапусти меня и у тебя будет чуть больше возможностей)))")
+    else:
+        bot.send_message(message.chat.id, "ТЫ ПИЗДЮК, А НЕ СТАРОСТА!")
+
+# ПРОМОКОДЫ
+# @bot.message_handler(commands=['promo_code'])
+# def promo(message):
+
+#     chat_id = message.chat.id
+
+#     conn = sqlite3.connect(r'database/promo.db', check_same_thread=True)
+#     db = conn.cursor()
+#     db.execute("SELECT * from chats;")
+#     chat = db.fetchall()
+    
+
+
 # Обработчик обычный сообщений
 @bot.message_handler()
 def get_info(message):
-
-    def what_is_day():
-        if int(datetime.datetime.now().strftime('%W')) % 2 == 0:
-            return 'honest_week'
-        else:
-            return 'odd_week'
 
     # Вывод имени отправителя и сообщение в отдельные переменнные 
     name = message.from_user.first_name
@@ -245,38 +288,10 @@ def get_info(message):
 
     # Сообщения, которые бот понимает
     hello = {'Привет', 'Здарова', 'Hello', 'Здравствуй'}
-    how_are_you = {'Как ты?', 'как ты?', 'Как ты', 'как ты', 'Как дела?', 'как дела?', 'как дела', 'Как дела'}
 
     # Мониторинг на Приветствие
     if send_message in hello:
         bot.send_message(message.chat.id, f'Здравствуй, {name}!', parse_mode='html')
-    
-    elif send_message in how_are_you:
-        bot.send_message(message.chat.id, f'Хорошо, а вы как?', parse_mode='html')
-
-
-    # Расписание на всю неделю (Марк Цысь обещал сделать...)
-    elif send_message in 'Покажи расписание на всю неделю':
-
-        # Смотрим расписание в базе данных 
-        conn = sqlite3.connect(r'database/timetable.db')
-        db = conn.cursor()
-        db.execute(f"SELECT week_day, {what_is_day()}, start_time from '2vbASU';")
-        all = db.fetchall()
-        print(all)
-        conn.close()
-
-
-        # Распарсиваем данные на недели, пары, и время
-        week = []
-        lesson = []
-        time = []
-        for timetable in all:
-            week.append(timetable[0])
-            lesson.append(timetable[1])
-            time.append(timetable[2])
-        for i in range(14):
-            bot.send_message(message.chat.id, f'{week[i]}\n{lesson[i]} {time[i]}', parse_mode='html')
 
     # Обработка непонятных сообщений
     else:
@@ -359,6 +374,7 @@ def callback_inline(call):
 
     except Exception as e:
         print(repr(e))
+
 
 
 
