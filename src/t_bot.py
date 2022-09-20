@@ -90,7 +90,6 @@ def start(message):
             print(f"INSERT INTO chats ('id') VALUES ('{chat_id}');")
             db.execute("SELECT name from groups;")
             chats = db.fetchall()
-            conn.close()
 
 
             say_hello = "Я вижу ты у нас впервые)\nДавай знакомиться. Я - Анна. Меня создали в помощь студентам. Из какой ты группы?"
@@ -105,23 +104,47 @@ def start(message):
 
             flag = False
 
-    time.sleep(4)
 
+
+    # Проверяем является ли пользователь старостой
+    db.execute(f"SELECT headman from chats where id = {chat_id}")
+    headman = db.fetchone()[0]
+    conn.close()
     # Добавляем сообщения
     sticker = open('../stickers/hello1.webp', 'rb')
     gen_Hello = f'<b>Привет, {name}.</b>\nМеня зовут Анна. Я ваш главный помощник в институте. ' \
                 f'Я быстро учусь и очень скоро смогу вам ответить на все ваши вопросы.'
 
-    # Инизиализируем кнопки
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn1 = types.KeyboardButton("/help")
-    btn2 = types.KeyboardButton("/timetable")
-    btn3 = types.KeyboardButton("/promo_code")
-    markup.add(btn1, btn2)
-    markup.add(btn3)
-    # Отправляем сообщения приветствия
-    bot.send_sticker(message.chat.id, sticker)
-    bot.send_message(message.chat.id, gen_Hello, parse_mode='html', reply_markup=markup)  # (кому. что. параметры)    schedule.run_pending()
+    if headman == 1:
+        print("yes")
+        # Инизиализируем кнопки
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        btn1 = types.KeyboardButton("/help")
+        btn2 = types.KeyboardButton("/timetable")
+        btn3 = types.KeyboardButton("/promo_code")
+        btn4 = types.KeyboardButton("/for_headman")
+        markup.add(btn1, btn2)
+        markup.add(btn4)
+        markup.add(btn3)
+        # Отправляем сообщения приветствия
+        bot.send_sticker(message.chat.id, sticker)
+        bot.send_message(message.chat.id, gen_Hello, parse_mode='html', reply_markup=markup)
+    else:
+        # Инизиализируем кнопки
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        btn1 = types.KeyboardButton("/help")
+        btn2 = types.KeyboardButton("/timetable")
+        btn3 = types.KeyboardButton("/promo_code")
+        markup.add(btn1, btn2)
+        markup.add(btn3)
+        # Отправляем сообщения приветствия
+        bot.send_sticker(message.chat.id, sticker)
+        bot.send_message(message.chat.id, gen_Hello, parse_mode='html', reply_markup=markup)
+        print("no")
+
+
+    
+     # (кому. что. параметры)    schedule.run_pending()
 
 
 
@@ -236,6 +259,10 @@ def timetable(message):
 
 #---------------------------------------------АДМИНСКАЯ ЧАСТЬ------------------------------------------------------#
 
+@bot.message_handler(commands=['for_headman'])
+def main_menu(message):
+    bot.send_message(message.chat.id, "Коллега, здравствуй!")
+    print(message)
 
 @bot.message_handler(commands=['ястароста'])
 def insert_headman(message):
