@@ -28,6 +28,7 @@
 
 
 
+from email.mime import image
 import sys
 from ast import Continue
 from cgi import print_form
@@ -111,7 +112,7 @@ def start(message):
     headman = db.fetchone()[0]
     conn.close()
     # Добавляем сообщения
-    sticker = open('../stickers/hello1.webp', 'rb')
+    hello_sticker = open('../stickers/hello1.webp', 'rb')
     gen_Hello = f'<b>Привет, {name}.</b>\nМеня зовут Анна. Я ваш главный помощник в институте. ' \
                 f'Я быстро учусь и очень скоро смогу вам ответить на все ваши вопросы.'
 
@@ -121,31 +122,22 @@ def start(message):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton("/help")
         btn2 = types.KeyboardButton("/timetable")
-        btn3 = types.KeyboardButton("/promo_code")
         btn4 = types.KeyboardButton("/for_headman")
         markup.add(btn1, btn2)
         markup.add(btn4)
-        markup.add(btn3)
         # Отправляем сообщения приветствия
-        bot.send_sticker(message.chat.id, sticker)
+        bot.send_sticker(message.chat.id, hello_sticker)
         bot.send_message(message.chat.id, gen_Hello, parse_mode='html', reply_markup=markup)
     else:
         # Инизиализируем кнопки
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton("/help")
         btn2 = types.KeyboardButton("/timetable")
-        btn3 = types.KeyboardButton("/promo_code")
         markup.add(btn1, btn2)
-        markup.add(btn3)
         # Отправляем сообщения приветствия
-        bot.send_sticker(message.chat.id, sticker)
+        bot.send_sticker(message.chat.id, hello_sticker)
         bot.send_message(message.chat.id, gen_Hello, parse_mode='html', reply_markup=markup)
         print("no")
-
-
-    
-     # (кому. что. параметры)    schedule.run_pending()
-
 
 
 
@@ -166,7 +158,6 @@ def help(message):
 def timetable(message):
 
     chat_id = message.chat.id
-
     # Определение группы
     def what_is_group(id):
         conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
@@ -175,8 +166,6 @@ def timetable(message):
         group = db.fetchone()
         conn.close()
         return group[0]
-
-
 
     # Определение четности и нечетности недели
     def what_is_day():
@@ -224,7 +213,8 @@ def timetable(message):
 
     # Делаем проверку на выбор группы
     if what_is_group(chat_id) == "NONE":
-        bot.send_message(message.chat.id, "Выбери свою группу!😡")
+        bot.send_sticker(message.chat.id, open('../stickers/angry.webp', 'rb'))
+        bot.send_message(message.chat.id, "Выбери свою группу!")
         
     else:
         # Подключаемся к бд с расписанием
@@ -261,7 +251,11 @@ def timetable(message):
 
 @bot.message_handler(commands=['for_headman'])
 def main_menu(message):
-    bot.send_message(message.chat.id, "Коллега, здравствуй!")
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn1 = types.KeyboardButton("/qwe")
+    btn2 = types.KeyboardButton("/asd")
+    markup.add(btn1, btn2)
+    bot.send_message(message.chat.id, "Коллега, здравствуй!\nЧто будем делать?", reply_markup=markup)
     print(message)
 
 @bot.message_handler(commands=['ястароста'])
@@ -288,21 +282,12 @@ def get_password(message):
         db.execute(f"UPDATE chats set headman = 1 where id = {message.chat.id}")
         conn.commit()
         conn.close()
-        bot.send_message(message.chat.id, "И правда староста, добро пожаловать, коллега!\nПерезапусти меня и у тебя будет чуть больше возможностей)))")
+        markup = types.InlineKeyboardMarkup()
+        btn1 = types.InlineKeyboardButton(f'Перезапуск', callback_data=f'/start')
+        markup.add(btn1)
+        bot.send_message(message.chat.id, "И правда староста, добро пожаловать, коллега!\nПерезапусти меня и у тебя будет чуть больше возможностей)))", reply_markup=markup)
     else:
         bot.send_message(message.chat.id, "ТЫ ПИЗДЮК, А НЕ СТАРОСТА!")
-
-# ПРОМОКОДЫ
-# @bot.message_handler(commands=['promo_code'])
-# def promo(message):
-
-#     chat_id = message.chat.id
-
-#     conn = sqlite3.connect(r'database/promo.db', check_same_thread=True)
-#     db = conn.cursor()
-#     db.execute("SELECT * from chats;")
-#     chat = db.fetchall()
-    
 
 
 # Обработчик обычный сообщений
@@ -322,6 +307,7 @@ def get_info(message):
 
     # Обработка непонятных сообщений
     else:
+        bot.send_sticker(message.chat.id, sticker = open('../stickers/fear.webp', 'rb'))
         bot.send_message(message.chat.id, f'Извините, {name} я вас не понимаю 😥', parse_mode='html')
     
         
@@ -379,11 +365,13 @@ def callback_inline(call):
             if call.data in select_group():
                 chat_id = call.message.chat.id
                 insert_client(chat_id=chat_id, group=f'{call.data}')
+                bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"{call.data}", reply_markup=None)
+                bot.answer_callback_query(call.id, show_alert=True, text=f"Выбрана группа {call.data}")
             else: 
                 teacher_id = call.data
                 if teacher(teacher_id, group(call)) == "NONE":
                     s_sms = 'Извините, я не знаю этого преподавателя 😢'
-                    bot.send_message(call.message.chat.id, s_sms)
+                    bot.answer_callback_query(call.id, show_alert=True, text=s_sms)
                 else:
                     teacher_data = teacher(teacher_id, group(call))
                     name = teacher_data[0][1]
@@ -394,9 +382,6 @@ def callback_inline(call):
 
                     photo = open(url, 'rb')
                     bot.send_photo(call.message.chat.id, photo, caption=text)
-
-            # Меняем запрос на более удобный
-            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Работаю над запросом...", reply_markup=None)
            
 
     except Exception as e:
@@ -408,4 +393,4 @@ def callback_inline(call):
 
 
 # Запуск бота на постоянную основу
-bot.polling(none_stop=False)
+bot.infinity_polling(none_stop=False)
