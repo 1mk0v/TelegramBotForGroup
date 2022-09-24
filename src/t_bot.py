@@ -122,9 +122,9 @@ def start(message):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton("/help")
         btn2 = types.KeyboardButton("/timetable")
-        btn4 = types.KeyboardButton("/for_headman")
+        # btn4 = types.KeyboardButton("/for_headman")
         markup.add(btn1, btn2)
-        markup.add(btn4)
+        # markup.add(btn4)
         # Отправляем сообщения приветствия
         bot.send_sticker(message.chat.id, hello_sticker)
         bot.send_message(message.chat.id, gen_Hello, parse_mode='html', reply_markup=markup)
@@ -146,8 +146,11 @@ def start(message):
 def help(message):
     name = message.from_user.first_name
     gen_Help = f'<b>{name}</b>, мой функционал не велик 🙄, но все же что-то я умею 😏\n' \
-                f'1. Я буду напоминать тебе о сегодняшних занятиях и отсылать новости 😉\n' \
-                f'2. Я знаю твоё расписание на сегодня 🕖' 
+                f'1️⃣ Я знаю твоё расписание на сегодня 🕖\n' \
+                f'2️⃣ Совсем скоро я смогу запоминать объявления старосты.\n'
+                # f'❗️❗️❗️Если вы староста в своей группе:' \
+                # f'1. Напишите моему разработчику он вам даст пароль, с помощью которого я запомню вас как старосту в вашей группе.\n' \
+                # f'2. Напишите мне "/ястароста", а дальше следуйте инструкции.' 
     bot.send_message(message.chat.id, gen_Help, parse_mode='html')
 
 
@@ -249,45 +252,45 @@ def timetable(message):
 
 #---------------------------------------------АДМИНСКАЯ ЧАСТЬ------------------------------------------------------#
 
-@bot.message_handler(commands=['for_headman'])
-def main_menu(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn1 = types.KeyboardButton("/qwe")
-    btn2 = types.KeyboardButton("/asd")
-    markup.add(btn1, btn2)
-    bot.send_message(message.chat.id, "Коллега, здравствуй!\nЧто будем делать?", reply_markup=markup)
-    print(message)
+# @bot.message_handler(commands=['for_headman'])
+# def main_menu(message):
+#     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+#     btn1 = types.KeyboardButton("/qwe")
+#     btn2 = types.KeyboardButton("/asd")
+#     markup.add(btn1, btn2)
+#     bot.send_message(message.chat.id, "Коллега, здравствуй!\nЧто будем делать?", reply_markup=markup)
+#     print(message)
 
-@bot.message_handler(commands=['ястароста'])
-def insert_headman(message):
-    bot.send_message(message.chat.id, "Привет!")
-    conn = sqlite3.connect(r'database/chats.db')
-    db = conn.cursor()
-    db.execute(f"SELECT headman FROM chats where group_name in (SELECT group_name FROM chats where id = {message.chat.id});")
-    yn = db.fetchone()
-    conn.close()
-    if 1 in yn:
-        bot.send_message(message.chat.id, "У этой группы есть староста!")
-    else:
-        bot.send_message(message.chat.id, "Вводи свой пароль, староста!")
-        bot.register_next_step_handler(message, get_password)
+# @bot.message_handler(commands=['ястароста'])
+# def insert_headman(message):
+#     bot.send_message(message.chat.id, "Привет!")
+#     conn = sqlite3.connect(r'database/chats.db')
+#     db = conn.cursor()
+#     db.execute(f"SELECT headman FROM chats where group_name in (SELECT group_name FROM chats where id = {message.chat.id});")
+#     yn = db.fetchone()
+#     conn.close()
+#     if 1 in yn:
+#         bot.send_message(message.chat.id, "У этой группы есть староста!")
+#     else:
+#         bot.send_message(message.chat.id, "Введи пароль, который тебе дал мой разработчик!")
+#         bot.register_next_step_handler(message, get_password)
 
-def get_password(message):
-    text = message.text
-    conn = sqlite3.connect(r'database/chats.db')
-    db = conn.cursor()
-    db.execute(f'SELECT passwd FROM groups where name in (SELECT group_name from chats where id = {message.chat.id});')
-    passwd = db.fetchone()[0]
-    if text == passwd:
-        db.execute(f"UPDATE chats set headman = 1 where id = {message.chat.id}")
-        conn.commit()
-        conn.close()
-        markup = types.InlineKeyboardMarkup()
-        btn1 = types.InlineKeyboardButton(f'Перезапуск', callback_data=f'/start')
-        markup.add(btn1)
-        bot.send_message(message.chat.id, "И правда староста, добро пожаловать, коллега!\nПерезапусти меня и у тебя будет чуть больше возможностей)))", reply_markup=markup)
-    else:
-        bot.send_message(message.chat.id, "ТЫ ПИЗДЮК, А НЕ СТАРОСТА!")
+# def get_password(message):
+#     text = message.text
+#     conn = sqlite3.connect(r'database/chats.db')
+#     db = conn.cursor()
+#     db.execute(f'SELECT passwd FROM groups where name in (SELECT group_name from chats where id = {message.chat.id});')
+#     passwd = db.fetchone()[0]
+#     if text == passwd:
+#         db.execute(f"UPDATE chats set headman = 1 where id = {message.chat.id}")
+#         conn.commit()
+#         conn.close()
+#         markup = types.ReplyKeyboardMarkup()
+#         btn1 = types.KeyboardButton('/start')
+#         markup.add(btn1)
+#         bot.send_message(message.chat.id, "И правда староста, добро пожаловать, коллега!\nПерезапусти меня и у тебя будет чуть больше возможностей)))", reply_markup=markup)
+#     else:
+#         bot.send_message(message.chat.id, "ТЫ ВРЕШЬ! ТЫ НЕ СТАРОСТА!")
 
 
 # Обработчик обычный сообщений
