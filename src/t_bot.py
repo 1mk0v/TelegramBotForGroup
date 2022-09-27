@@ -27,29 +27,20 @@
 ########################################################################################################
 
 
-
-from email.mime import image
-import sys
-from ast import Continue
-from cgi import print_form
-from cgitb import html, text
+from itertools import count
 import time
-from tokenize import group
-from typing import Text
-from pickle import TRUE
 import telebot
 from telebot import types
 import datetime
 import sqlite3
 from keyboa import Keyboa
-from datetime import timedelta
 import logging
 
 
 
 
 ### ВВОДИМ ТОКЕН НАШЕГО БОТА
-bot = telebot.TeleBot("5620314916:AAFd2NaaCj02H8Nwek38Rb_ugKZdpqlERe4")
+bot = telebot.TeleBot("")
 
 
 #---------------------------------------------КЛИЕНТСКАЯ ЧАСТЬ------------------------------------------------------#
@@ -147,7 +138,8 @@ def help(message):
     name = message.from_user.first_name
     gen_Help = f'<b>{name}</b>, мой функционал не велик 🙄, но все же что-то я умею 😏\n' \
                 f'1️⃣ Я знаю твоё расписание на сегодня 🕖\n' \
-                f'2️⃣ Совсем скоро я смогу запоминать объявления старосты.\n'
+                f'2️⃣ Совсем скоро я смогу запоминать объявления старосты.\n' \
+                f'❗️ВНИМАНИЕ❗️ Я очень не люблю, когда меня достают, поэтому смогу сказать тебе о твоем расписании не более трех раз!'
                 # f'❗️❗️❗️Если вы староста в своей группе:' \
                 # f'1. Напишите моему разработчику он вам даст пароль, с помощью которого я запомню вас как старосту в вашей группе.\n' \
                 # f'2. Напишите мне "/ястароста", а дальше следуйте инструкции.' 
@@ -214,12 +206,29 @@ def timetable(message):
         return tt_info
 
 
+    # Ищем число запросов
+    def request_count(chat_id):
+        conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
+        db = conn.cursor()
+        db.execute(f"SELECT week_day from chats where id = {chat_id};")
+        wk_day = db.fetchone()[0]
+        if wk_day != datetime.datetime.today().isoweekday():
+            db.execute(f"UPDATE chats SET request_count = 0, week_day = {datetime.datetime.today().isoweekday()} where id = {chat_id};")
+            conn.commit()
+        else: 
+            db.execute(f"UPDATE chats SET request_count = request_count + 1  where id = {chat_id};")
+            conn.commit()
+        db.execute(f"SELECT request_count FROM chats where id = {chat_id};")
+        count = db.fetchone()[0]
+        conn.close()
+        return count
+
     # Делаем проверку на выбор группы
     if what_is_group(chat_id) == "NONE":
         bot.send_sticker(message.chat.id, open('../stickers/angry.webp', 'rb'))
         bot.send_message(message.chat.id, "Выбери свою группу!")
         
-    else:
+    elif request_count(chat_id) <= 3:
         # Подключаемся к бд с расписанием
         conn = sqlite3.connect(r'database/timetable.db')
         db = conn.cursor()
@@ -310,6 +319,7 @@ def get_info(message):
 
     # Обработка непонятных сообщений
     else:
+        print(message)
         bot.send_sticker(message.chat.id, sticker = open('../stickers/fear.webp', 'rb'))
         bot.send_message(message.chat.id, f'Извините, {name} я вас не понимаю 😥', parse_mode='html')
     
