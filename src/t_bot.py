@@ -42,6 +42,23 @@ import logging
 ### ВВОДИМ ТОКЕН НАШЕГО БОТА
 bot = telebot.TeleBot("")
 
+# Ищем число запросов
+# def request_count(chat_id):
+#     conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
+#     db = conn.cursor()
+#     db.execute(f"SELECT week_day from chats where id = {chat_id};")
+#     wk_day = db.fetchone()[0]
+#     if wk_day != datetime.datetime.today().isoweekday():
+#         db.execute(f"UPDATE chats SET request_count = 0, week_day = {datetime.datetime.today().isoweekday()} where id = {chat_id};")
+#         conn.commit()
+#     else: 
+#         db.execute(f"UPDATE chats SET request_count = request_count + 1  where id = {chat_id};")
+#         conn.commit()
+#     db.execute(f"SELECT request_count FROM chats where id = {chat_id};")
+#     count = db.fetchone()[0]
+#     conn.close()
+#     return count
+
 
 #---------------------------------------------КЛИЕНТСКАЯ ЧАСТЬ------------------------------------------------------#
 
@@ -96,8 +113,7 @@ def start(message):
 
             flag = False
 
-
-
+ 
     # Проверяем является ли пользователь старостой
     db.execute(f"SELECT headman from chats where id = {chat_id}")
     headman = db.fetchone()[0]
@@ -113,9 +129,9 @@ def start(message):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton("/help")
         btn2 = types.KeyboardButton("/timetable")
-        # btn4 = types.KeyboardButton("/for_headman")
+        btn4 = types.KeyboardButton("/add_event")
         markup.add(btn1, btn2)
-        # markup.add(btn4)
+        markup.add(btn4)
         # Отправляем сообщения приветствия
         bot.send_sticker(message.chat.id, hello_sticker)
         bot.send_message(message.chat.id, gen_Hello, parse_mode='html', reply_markup=markup)
@@ -139,7 +155,7 @@ def help(message):
     gen_Help = f'<b>{name}</b>, мой функционал не велик 🙄, но все же что-то я умею 😏\n' \
                 f'1️⃣ Я знаю твоё расписание на сегодня 🕖\n' \
                 f'2️⃣ Совсем скоро я смогу запоминать объявления старосты.\n' \
-                f'❗️ВНИМАНИЕ❗️ Я очень не люблю, когда меня достают, поэтому смогу сказать тебе о твоем расписании не более трех раз!'
+                # f'❗️ВНИМАНИЕ❗️ Я очень не люблю, когда меня достают, поэтому смогу сказать тебе о твоем расписании не более трех раз!'
                 # f'❗️❗️❗️Если вы староста в своей группе:' \
                 # f'1. Напишите моему разработчику он вам даст пароль, с помощью которого я запомню вас как старосту в вашей группе.\n' \
                 # f'2. Напишите мне "/ястароста", а дальше следуйте инструкции.' 
@@ -206,29 +222,13 @@ def timetable(message):
         return tt_info
 
 
-    # Ищем число запросов
-    def request_count(chat_id):
-        conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
-        db = conn.cursor()
-        db.execute(f"SELECT week_day from chats where id = {chat_id};")
-        wk_day = db.fetchone()[0]
-        if wk_day != datetime.datetime.today().isoweekday():
-            db.execute(f"UPDATE chats SET request_count = 0, week_day = {datetime.datetime.today().isoweekday()} where id = {chat_id};")
-            conn.commit()
-        else: 
-            db.execute(f"UPDATE chats SET request_count = request_count + 1  where id = {chat_id};")
-            conn.commit()
-        db.execute(f"SELECT request_count FROM chats where id = {chat_id};")
-        count = db.fetchone()[0]
-        conn.close()
-        return count
 
     # Делаем проверку на выбор группы
     if what_is_group(chat_id) == "NONE":
         bot.send_sticker(message.chat.id, open('../stickers/angry.webp', 'rb'))
         bot.send_message(message.chat.id, "Выбери свою группу!")
         
-    elif request_count(chat_id) <= 3:
+    else:
         # Подключаемся к бд с расписанием
         conn = sqlite3.connect(r'database/timetable.db')
         db = conn.cursor()
@@ -261,45 +261,67 @@ def timetable(message):
 
 #---------------------------------------------АДМИНСКАЯ ЧАСТЬ------------------------------------------------------#
 
-# @bot.message_handler(commands=['for_headman'])
-# def main_menu(message):
-#     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-#     btn1 = types.KeyboardButton("/qwe")
-#     btn2 = types.KeyboardButton("/asd")
-#     markup.add(btn1, btn2)
-#     bot.send_message(message.chat.id, "Коллега, здравствуй!\nЧто будем делать?", reply_markup=markup)
-#     print(message)
+@bot.message_handler(commands=['add_event'])
+def main_menu(message):
+    bot.send_message(message.chat.id, f"Здравстуй, <b>{message.from_user.first_name}</b>!\n" \
+                                      f"Вы зашли в добавление события, ваша группа сможет спросить их у меня!\n" \
+                                      f"Но вы не переживайте я им напомню, что у вас есть объявление)", parse_mode='html')
+    bot.send_message(message.chat.id, f"Напишите свое объявление!")
+    bot.register_next_step_handler(message, add_event)
 
-# @bot.message_handler(commands=['ястароста'])
-# def insert_headman(message):
-#     bot.send_message(message.chat.id, "Привет!")
-#     conn = sqlite3.connect(r'database/chats.db')
-#     db = conn.cursor()
-#     db.execute(f"SELECT headman FROM chats where group_name in (SELECT group_name FROM chats where id = {message.chat.id});")
-#     yn = db.fetchone()
-#     conn.close()
-#     if 1 in yn:
-#         bot.send_message(message.chat.id, "У этой группы есть староста!")
-#     else:
-#         bot.send_message(message.chat.id, "Введи пароль, который тебе дал мой разработчик!")
-#         bot.register_next_step_handler(message, get_password)
+def add_event(message):
+    text = message.text
+    conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
+    db = conn.cursor()
+    db.execute(f"INSERT INTO events ('group_name', 'info') VALUES ((SELECT group_name from chats where id = {message.chat.id}), '{text}');")
+    conn.commit()
+    bot.send_message(message.chat.id, f"Я запоминила!")
+    db.execute(f"SELECT count(info) from events where group_name = (SELECT group_name from chats where id = {message.chat.id})")
+    count = db.fetchone()[0]
+    db.execute(f"SELECT id from chats where group_name = (SELECT group_name from chats where id = {message.chat.id})")
+    all_chats = db.fetchall()
+    for i in all_chats:
+        print(i[0])
+        markup = types.InlineKeyboardMarkup()
+        btn1 = types.InlineKeyboardButton(f'Показать все ({count})', callback_data=f'a00000001')
+        btn2 = types.InlineKeyboardButton(f'Показать последнее', callback_data=f'a00000002')
+        markup.add(btn1)
+        markup.add(btn2)
+        bot.send_message(int(i[0]), f"Ваш староста сделал объявления!", reply_markup=markup)
 
-# def get_password(message):
-#     text = message.text
-#     conn = sqlite3.connect(r'database/chats.db')
-#     db = conn.cursor()
-#     db.execute(f'SELECT passwd FROM groups where name in (SELECT group_name from chats where id = {message.chat.id});')
-#     passwd = db.fetchone()[0]
-#     if text == passwd:
-#         db.execute(f"UPDATE chats set headman = 1 where id = {message.chat.id}")
-#         conn.commit()
-#         conn.close()
-#         markup = types.ReplyKeyboardMarkup()
-#         btn1 = types.KeyboardButton('/start')
-#         markup.add(btn1)
-#         bot.send_message(message.chat.id, "И правда староста, добро пожаловать, коллега!\nПерезапусти меня и у тебя будет чуть больше возможностей)))", reply_markup=markup)
-#     else:
-#         bot.send_message(message.chat.id, "ТЫ ВРЕШЬ! ТЫ НЕ СТАРОСТА!")
+
+
+
+@bot.message_handler(commands=['ястароста'])
+def insert_headman(message):
+    bot.send_message(message.chat.id, "Привет!")
+    conn = sqlite3.connect(r'database/chats.db')
+    db = conn.cursor()
+    db.execute(f"SELECT headman FROM chats where group_name in (SELECT group_name FROM chats where id = {message.chat.id});")
+    yn = db.fetchone()
+    conn.close()
+    if 1 in yn:
+        bot.send_message(message.chat.id, "У этой группы есть староста!")
+    else:
+        bot.send_message(message.chat.id, "Введи пароль, который тебе дал мой разработчик!")
+        bot.register_next_step_handler(message, get_password)
+
+def get_password(message):
+    text = message.text
+    conn = sqlite3.connect(r'database/chats.db')
+    db = conn.cursor()
+    db.execute(f'SELECT passwd FROM groups where name in (SELECT group_name from chats where id = {message.chat.id});')
+    passwd = db.fetchone()[0]
+    if text == passwd:
+        db.execute(f"UPDATE chats set headman = 1 where id = {message.chat.id}")
+        conn.commit()
+        conn.close()
+        markup = types.ReplyKeyboardMarkup()
+        btn1 = types.KeyboardButton('/start')
+        markup.add(btn1)
+        bot.send_message(message.chat.id, "И правда староста, добро пожаловать, коллега!\nПерезапусти меня и у тебя будет чуть больше возможностей)))", reply_markup=markup)
+    else:
+        bot.send_message(message.chat.id, "ТЫ ВРЕШЬ! ТЫ НЕ СТАРОСТА!")
 
 
 # Обработчик обычный сообщений
@@ -372,14 +394,35 @@ def callback_inline(call):
         print(f"UPDATE chats SET group_name = '{group}' where id = '{chat_id}';")
 
 
+    # Выводит каждому участнику в группе событие
+    def send_event(chat_id):
+        conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
+        db = conn.cursor()
+        db.execute(f"SELECT info from events where group_name = (SELECT group_name from chats where id = {chat_id})")
+        info = db.fetchall()
+        return info
+
     try:
         if call.message:
-            print(select_group())
             if call.data in select_group():
                 chat_id = call.message.chat.id
                 insert_client(chat_id=chat_id, group=f'{call.data}')
                 bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"{call.data}", reply_markup=None)
                 bot.answer_callback_query(call.id, show_alert=True, text=f"Выбрана группа {call.data}")
+            elif call.data == 'a00000001':
+                chat_id = call.message.chat.id
+                if len(send_event(chat_id)) == 0:
+                    bot.send_message(chat_id, "Пока что у вас нет объявлений!")
+                else:
+                    for i in send_event(chat_id):
+                        print(i[0])
+                        bot.send_message(chat_id, f"{i[0]}")
+            elif call.data == 'a00000002':
+                chat_id = call.message.chat.id
+                if len(send_event(chat_id)) != 0:
+                    bot.send_message(chat_id, send_event(chat_id)[len(send_event(chat_id))-1])
+                else:
+                    bot.send_message(chat_id, "Пока что у вас нет объявлений!")
             else: 
                 teacher_id = call.data
                 if teacher(teacher_id, group(call)) == "NONE":
