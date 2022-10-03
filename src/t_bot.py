@@ -140,7 +140,9 @@ def start(message):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton("/help")
         btn2 = types.KeyboardButton("/timetable")
+        btn3 = types.KeyboardButton("/show_event")
         markup.add(btn1, btn2)
+        markup.add(btn3)
         # Отправляем сообщения приветствия
         bot.send_sticker(message.chat.id, hello_sticker)
         bot.send_message(message.chat.id, gen_Hello, parse_mode='html', reply_markup=markup)
@@ -259,6 +261,22 @@ def timetable(message):
 
 
 
+@bot.message_handler(commands=['show_event'])
+def show_event(message):
+    conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
+    db = conn.cursor()
+    db.execute(f"SELECT info, time from events where group_name = (SELECT group_name from chats where id = {message.chat.id})")
+    info = db.fetchall()
+    conn.close()
+    if len(info) > 0:
+        bot.send_message(message.chat.id, f"У вас <b>{len(info)}</b> уведомлений\nЯ покажу вам последнее)", parse_mode='html')
+        bot.send_message(message.chat.id, f"<b>{info[len(info)-1][1]}</b>\n{info[len(info)-1][0]}", parse_mode='html')
+    print(len(info))
+    print(info)
+
+    
+
+
 #---------------------------------------------АДМИНСКАЯ ЧАСТЬ------------------------------------------------------#
 
 @bot.message_handler(commands=['add_event'])
@@ -273,7 +291,7 @@ def add_event(message):
     text = message.text
     conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
     db = conn.cursor()
-    db.execute(f"INSERT INTO events ('group_name', 'info') VALUES ((SELECT group_name from chats where id = {message.chat.id}), '{text}');")
+    db.execute(f"INSERT INTO events ('group_name', 'info', 'time') VALUES ((SELECT group_name from chats where id = {message.chat.id}), '{text}', '{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}');")
     conn.commit()
     bot.send_message(message.chat.id, f"Я запоминила!")
     db.execute(f"SELECT count(info) from events where group_name = (SELECT group_name from chats where id = {message.chat.id})")
@@ -287,7 +305,7 @@ def add_event(message):
         btn2 = types.InlineKeyboardButton(f'Показать последнее', callback_data=f'a00000002')
         markup.add(btn1)
         markup.add(btn2)
-        bot.send_message(int(i[0]), f"Ваш староста сделал объявления!", reply_markup=markup)
+        bot.send_message(int(i[0]), f"Ваш староста сделал объявление!", reply_markup=markup)
 
 
 
