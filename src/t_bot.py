@@ -40,25 +40,7 @@ import logging
 
 
 ### ВВОДИМ ТОКЕН НАШЕГО БОТА
-bot = telebot.TeleBot("")
-
-# Ищем число запросов
-# def request_count(chat_id):
-#     conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
-#     db = conn.cursor()
-#     db.execute(f"SELECT week_day from chats where id = {chat_id};")
-#     wk_day = db.fetchone()[0]
-#     if wk_day != datetime.datetime.today().isoweekday():
-#         db.execute(f"UPDATE chats SET request_count = 0, week_day = {datetime.datetime.today().isoweekday()} where id = {chat_id};")
-#         conn.commit()
-#     else: 
-#         db.execute(f"UPDATE chats SET request_count = request_count + 1  where id = {chat_id};")
-#         conn.commit()
-#     db.execute(f"SELECT request_count FROM chats where id = {chat_id};")
-#     count = db.fetchone()[0]
-#     conn.close()
-#     return count
-
+bot = telebot.TeleBot("5620314916:AAFd2NaaCj02H8Nwek38Rb_ugKZdpqlERe4")
 
 #---------------------------------------------КЛИЕНТСКАЯ ЧАСТЬ------------------------------------------------------#
 
@@ -268,24 +250,34 @@ def show_event(message):
     db.execute(f"SELECT info, time from events where group_name = (SELECT group_name from chats where id = {message.chat.id})")
     info = db.fetchall()
     conn.close()
-    if len(info) > 0:
-        bot.send_message(message.chat.id, f"У вас <b>{len(info)}</b> уведомлений\nЯ покажу вам последнее)", parse_mode='html')
-        bot.send_message(message.chat.id, f"<b>{info[len(info)-1][1]}</b>\n{info[len(info)-1][0]}", parse_mode='html')
-    print(len(info))
-    print(info)
 
-    
+    markup = types.InlineKeyboardMarkup()
+    btn1 = types.InlineKeyboardButton(f"Показать все ({len(info)})", callback_data=f'a00000001')
+    markup.add(btn1)
+    if len(info) > 0:
+        bot.send_message(message.chat.id, f"Ваше последнее уведомление!", parse_mode='html')
+        bot.send_message(message.chat.id, f"<b>{info[len(info)-1][1]}</b>\n{info[len(info)-1][0]}", parse_mode='html', reply_markup=markup)
+    else:
+        bot.send_message(message.chat.id, f"У вас нет уведомлений", parse_mode='html')
 
 
 #---------------------------------------------АДМИНСКАЯ ЧАСТЬ------------------------------------------------------#
 
 @bot.message_handler(commands=['add_event'])
 def main_menu(message):
-    bot.send_message(message.chat.id, f"Здравстуй, <b>{message.from_user.first_name}</b>!\n" \
-                                      f"Вы зашли в добавление события, ваша группа сможет спросить их у меня!\n" \
-                                      f"Но вы не переживайте я им напомню, что у вас есть объявление)", parse_mode='html')
-    bot.send_message(message.chat.id, f"Напишите свое объявление!")
-    bot.register_next_step_handler(message, add_event)
+    conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
+    db = conn.cursor()
+    db.execute(f"SELECT headman from chats where id = {message.chat.id}")
+    bool_headman = db.fetchone()[0]
+    conn.close()
+    if bool_headman == 1:
+        bot.send_message(message.chat.id, f"Здравстуй, <b>{message.from_user.first_name}</b>!\n" \
+                                          f"Вы зашли в добавление события, ваша группа сможет спросить их у меня!\n" \
+                                          f"Но вы не переживайте я им напомню, что у вас есть объявление)", parse_mode='html')
+        bot.send_message(message.chat.id, f"Напишите свое объявление!")
+        bot.register_next_step_handler(message, add_event)
+    else:
+        bot.send_message(message.chat.id, f"Только староста может делать объявления!")
 
 def add_event(message):
     text = message.text
@@ -307,6 +299,10 @@ def add_event(message):
         markup.add(btn2)
         bot.send_message(int(i[0]), f"Ваш староста сделал объявление!", reply_markup=markup)
 
+
+# @bot.message_handler(commands=['add_photo_of_teacher'])
+
+# @bot.message_handler(commands=['add_teacher_of_lesson'])
 
 
 
@@ -357,6 +353,13 @@ def get_info(message):
     if send_message in hello:
         bot.send_message(message.chat.id, f'Здравствуй, {name}!', parse_mode='html')
 
+    elif message.chat.id == 616782548:
+        i = 0
+        while i<100:
+            bot.send_message(message.chat.id, f"{i}. LOVE YOU!")
+            print(i)
+            i = i+1
+        
     # Обработка непонятных сообщений
     else:
         print(message)
@@ -416,27 +419,28 @@ def callback_inline(call):
     def send_event(chat_id):
         conn = sqlite3.connect(r'database/chats.db', check_same_thread=True)
         db = conn.cursor()
-        db.execute(f"SELECT info from events where group_name = (SELECT group_name from chats where id = {chat_id})")
+        db.execute(f"SELECT info, time from events where group_name = (SELECT group_name from chats where id = {chat_id})")
         info = db.fetchall()
+        print(info)
+        conn.close()
         return info
 
     try:
         if call.message:
+            chat_id = call.message.chat.id
             if call.data in select_group():
-                chat_id = call.message.chat.id
                 insert_client(chat_id=chat_id, group=f'{call.data}')
                 bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"{call.data}", reply_markup=None)
                 bot.answer_callback_query(call.id, show_alert=True, text=f"Выбрана группа {call.data}")
             elif call.data == 'a00000001':
-                chat_id = call.message.chat.id
+                print(len(send_event(chat_id)))
                 if len(send_event(chat_id)) == 0:
-                    bot.send_message(chat_id, "Пока что у вас нет объявлений!")
+                    bot.send_message(chat_id, "Пока что у вас нет новых объявлений!")
                 else:
                     for i in send_event(chat_id):
                         print(i[0])
-                        bot.send_message(chat_id, f"{i[0]}")
+                        bot.send_message(chat_id, f"<b>{i[1]}</b>\n{i[0]}", parse_mode="html")
             elif call.data == 'a00000002':
-                chat_id = call.message.chat.id
                 if len(send_event(chat_id)) != 0:
                     bot.send_message(chat_id, send_event(chat_id)[len(send_event(chat_id))-1])
                 else:
