@@ -22,11 +22,14 @@
 ##                                                                                                    ##
 ##                                                                                                    ##
 ##                                                                                                    ##
+##                                         Developed by 1mk0v                                         ##
 ##                                                                                                    ##
 ##                                                                                                    ##
 ########################################################################################################
 
 
+from asyncio import events
+from email import message
 from itertools import count
 import time
 import telebot
@@ -35,6 +38,8 @@ import datetime
 import sqlite3
 from keyboa import Keyboa
 import logging
+
+from yaml import parse
 
 
 
@@ -111,8 +116,10 @@ def start(message):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton("/help")
         btn2 = types.KeyboardButton("/timetable")
-        btn4 = types.KeyboardButton("/add_event")
+        btn3 = types.KeyboardButton("/add_event")
+        btn4 = types.KeyboardButton("/add_photo_of_teacher")
         markup.add(btn1, btn2)
+        markup.add(btn3)
         markup.add(btn4)
         # Отправляем сообщения приветствия
         bot.send_sticker(message.chat.id, hello_sticker)
@@ -249,14 +256,29 @@ def show_event(message):
     db = conn.cursor()
     db.execute(f"SELECT info, time from events where group_name = (SELECT group_name from chats where id = {message.chat.id})")
     info = db.fetchall()
+    for i in info:
+        year = int(i[1][0:4:1])
+        month = int(i[1][5:7:1])
+        day = int(i[1][8:10:1])
+        event_time = datetime.date(year, month, day)
+        delta = str(datetime.date.today() - event_time)
+        if delta[1] == ":":
+            delta = 0
+        else:
+            delta = int(delta[0:2:1])
+        db.execute(f"DELETE FROM events where life_end < {delta} and time = '{i[1]}';")
+        conn.commit()
+    
+    db.execute(f"SELECT info, time from events where group_name = (SELECT group_name from chats where id = {message.chat.id})")
+    new_info = db.fetchall()
     conn.close()
 
     markup = types.InlineKeyboardMarkup()
-    btn1 = types.InlineKeyboardButton(f"Показать все ({len(info)})", callback_data=f'a00000001')
+    btn1 = types.InlineKeyboardButton(f"Показать все ({len(new_info)})", callback_data=f'a00000001')
     markup.add(btn1)
-    if len(info) > 0:
+    if len(new_info) > 0:
         bot.send_message(message.chat.id, f"Ваше последнее уведомление!", parse_mode='html')
-        bot.send_message(message.chat.id, f"<b>{info[len(info)-1][1]}</b>\n{info[len(info)-1][0]}", parse_mode='html', reply_markup=markup)
+        bot.send_message(message.chat.id, f"<b>{new_info[len(new_info)-1][1]}</b>\n{new_info[len(new_info)-1][0]}", parse_mode='html', reply_markup=markup)
     else:
         bot.send_message(message.chat.id, f"У вас нет уведомлений", parse_mode='html')
 
@@ -298,9 +320,47 @@ def add_event(message):
         markup.add(btn1)
         markup.add(btn2)
         bot.send_message(int(i[0]), f"Ваш староста сделал объявление!", reply_markup=markup)
+    return
 
 
-# @bot.message_handler(commands=['add_photo_of_teacher'])
+@bot.message_handler(commands=['add_photo_of_teacher'])
+def insert_photo(message):
+
+    conn = sqlite3.connect(r'database/chats.db')
+    db = conn.cursor()
+    db.execute(f"SELECT group_name from chats where id = {message.chat.id};")
+    group_name = db.fetchone()[0]
+    db.execute(f"SELECT headman from chats where id = {message.chat.id}")
+    bool_headman = db.fetchone()[0]
+    conn.close()
+
+    if bool_headman == 1:
+        conn = sqlite3.connect(r'database/timetable.db')
+        db = conn.cursor()
+        db.execute(f"SELECT * FROM teacher where group_name = '{group_name}'")
+        teachers = db.fetchall()
+        conn.close()
+
+        teach_name = []
+
+        for i in teachers:
+            if i[5] == 'database/photo_of_teacher/default.jpg':
+                teach_name.append({i[1]:('teacher'+str(i[0]))})
+
+                
+        
+        print(teach_name)
+        kb_teach = Keyboa(items=teach_name)
+        bot.send_message(message.chat.id, "Какому преподавателю ты хочешь добавить фото?", reply_markup=kb_teach())
+    else:
+        bot.send_message(message.chat.id, f"Только староста может ставить фотки преподавателям!")
+        return
+
+def get_id(teacher_id,call, message):
+    bot.send_message(call.message.chat.id, "Отлично, теперь выбери фотографию!")
+
+    
+
 
 # @bot.message_handler(commands=['add_teacher_of_lesson'])
 
@@ -336,6 +396,7 @@ def get_password(message):
         bot.send_message(message.chat.id, "И правда староста, добро пожаловать, коллега!\nПерезапусти меня и у тебя будет чуть больше возможностей)))", reply_markup=markup)
     else:
         bot.send_message(message.chat.id, "ТЫ ВРЕШЬ! ТЫ НЕ СТАРОСТА!")
+    return
 
 
 # Обработчик обычный сообщений
@@ -427,6 +488,7 @@ def callback_inline(call):
 
     try:
         if call.message:
+            # print(call.data)
             chat_id = call.message.chat.id
             if call.data in select_group():
                 insert_client(chat_id=chat_id, group=f'{call.data}')
@@ -445,6 +507,11 @@ def callback_inline(call):
                     bot.send_message(chat_id, send_event(chat_id)[len(send_event(chat_id))-1])
                 else:
                     bot.send_message(chat_id, "Пока что у вас нет объявлений!")
+
+            elif call.data[0:7:1] == 'teacher':
+                teacher_id = call.data[7::1]
+                bot.register_next_step_handler(call.data, get_id(teacher_id, call))
+
             else: 
                 teacher_id = call.data
                 if teacher(teacher_id, group(call)) == "NONE":

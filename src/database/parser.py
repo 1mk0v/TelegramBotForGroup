@@ -240,5 +240,6 @@ def main(argv=sys.argv):
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: {} <input_html_of_group>\n".format(sys.argv[0]))
+        print("Используйте ./parser.py <имя группы>. В первый раз он добавит все неизвестные ему пары. При каждом повторном разе будет добавлять расписание в таблицу группы.")
         sys.exit(1)
     sys.exit(main())
